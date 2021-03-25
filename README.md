@@ -12,4 +12,10 @@ LANGUAGE_KEY为默认值，如果需要变更的话需要改代码的LANGUAGE_KE
 
 
 
+
+
 如果点击下载无反应，可以检查下浏览器右上角是否禁止了多个文件下载，允许后再点击下载即可
+
+
+
+可以通过https://jsontoexcel.com/将json变回为excel，可以互相转化，非常方便
