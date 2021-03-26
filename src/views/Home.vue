@@ -20,6 +20,16 @@
       <b v-if="items.length === 0">未选择文件</b>
       <b-table hover responsive :items="items" v-else></b-table>
     </div>
+    <div class="view">
+      <h2>校验空值</h2>
+      <b v-if="items.length === 0">未选择文件</b>
+      <b-table hover responsive :items="errorSet" v-else>
+        <!-- 这是什么神奇的用法 v-slot:cell(emptyKeys)="data" -->
+        <template v-slot:cell(emptyKeys)="data">
+          <div v-for="(item, index) in data.value" :key="index">{{ item }}</div>
+        </template>
+      </b-table>
+    </div>
     <div class="save">
       <h2>生成JSON</h2>
       <h5>（如无反应，点击下载后记得在右上角允许多个文件下载）</h5>
@@ -55,7 +65,10 @@ export default {
     return {
       file: null,
       items: [],
-      key: ''
+      key: '',
+      errorSet: {},
+      dataArr: [],
+      languageKeys: []
     };
   },
 
@@ -96,6 +109,7 @@ export default {
             }
           }
           this.items = persons;
+          this.prepare();
         } catch (e) {
           alert(e.message);
           return;
@@ -112,21 +126,35 @@ export default {
 
     // 处理文件
     trans() {
+      this.dataArr.forEach((obj, index) => {
+        this.create(obj, `lang-${String(this.languageKeys[index]).toLowerCase()}`)
+      })
+    },
+
+    // 准备数据格式并校验空值
+    prepare() {
       const item = {...this.items[0]};
       delete item[LANGUAGE_KEY];
-      const keys = Object.keys(item);
-      const arr = keys.map(key => {
+      const languageKeys = Object.keys(item);
+      const arr = languageKeys.map((lang, langIndex) => {
         const obj = {};
-        this.items.forEach(row => {
-          if (row[LANGUAGE_KEY]) {
-            obj[row[LANGUAGE_KEY]] = row[key] || '';
+        const emptyKeys = [];
+        this.items.forEach((row, index) => {
+          const key = row[LANGUAGE_KEY] && String(row[LANGUAGE_KEY]).trim();
+          const value = row[lang] && String(row[lang]).trim();
+          if (key && value) {
+            obj[key] = value || 'illegal value';
+          }
+          if (!value) {
+            emptyKeys.push(key);
           }
         });
+        this.errorSet = [];
+        this.errorSet.push({ lang, emptyKeys });
         return obj;
       });
-      arr.forEach((obj, index) => {
-        this.create(obj, `lang-${String(keys[index]).toLowerCase()}`)
-      })
+      this.languageKeys = languageKeys
+      this.dataArr = arr;
     },
 
     // 生成文件
