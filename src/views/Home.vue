@@ -21,7 +21,7 @@
       <b-table hover responsive :items="items" v-else></b-table>
     </div>
     <div class="view">
-      <h2>校验空值</h2>
+      <h2>校验空值（第二行必须不能为空）</h2>
       <b v-if="items.length === 0">未选择文件</b>
       <b-table hover responsive :items="errorSet" v-else>
         <!-- 这是什么神奇的用法 v-slot:cell(emptyKeys)="data" -->
@@ -48,6 +48,8 @@ import {
 } from 'bootstrap-vue';
 import XLSX from 'xlsx';
 import fileSaver from 'file-saver';
+import JSZip from 'jszip'
+
 export default {
   name: '',
 
@@ -126,13 +128,21 @@ export default {
 
     // 处理文件
     trans() {
+      const zip = new JSZip();
       this.dataArr.forEach((obj, index) => {
-        this.create(obj, `lang-${String(this.languageKeys[index]).toLowerCase()}`)
-      })
+        let name = String(this.languageKeys[index]).toLowerCase();
+        name = String(name).replace(/\s/g, '-');
+        const blob = this.create(obj);
+        zip.file(`lang-${name}.json`, blob);
+      });
+      zip.generateAsync({ type: 'blob' }).then((blob) => {
+        saveAs(blob, 'language.zip');
+      });
     },
 
     // 准备数据格式并校验空值
     prepare() {
+      this.errorSet = [];
       const item = {...this.items[0]};
       delete item[LANGUAGE_KEY];
       const languageKeys = Object.keys(item);
@@ -149,8 +159,9 @@ export default {
             emptyKeys.push(key);
           }
         });
-        this.errorSet = [];
-        this.errorSet.push({ lang, emptyKeys });
+        if (emptyKeys.length) {
+          this.errorSet.push({ lang, emptyKeys });
+        }
         return obj;
       });
       this.languageKeys = languageKeys
@@ -158,13 +169,12 @@ export default {
     },
 
     // 生成文件
-    create(obj, name) {
+    create(obj) {
       const data = JSON.stringify(obj, null, 2);
-      const fileName = name + '.json';
       const blob = new Blob([data], {
         type: 'text/plain;charset=utf-8',
       });
-      fileSaver.saveAs(blob, fileName);
+      return blob;
     },
 
     save() {
